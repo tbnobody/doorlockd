@@ -23,7 +23,7 @@
 		}
 
 		socket_write($socket, $json, strlen($json));
-		
+
 		$result = socket_read($socket, 1024);
 
 		socket_close($socket);
@@ -38,10 +38,10 @@
 	$isApi = false;
 
 	$pIp = $_SERVER[ 'REMOTE_ADDR' ];
-	
+
 	if( $_SERVER[ 'REQUEST_METHOD' ] == "POST" ) {
 
-		if (array_key_exists("user", $_POST) 
+		if (array_key_exists("user", $_POST)
 			&& array_key_exists('pass', $_POST)
 			&& array_key_exists('token', $_POST)
 			&& array_key_exists('command', $_POST)
@@ -52,12 +52,12 @@
 			$pToken = $_POST[ 'token' ];
 			$pCommand = $_POST[ 'command' ];
 			$pApi = $_POST[ 'api' ];
-	
+
 			if ($pApi == "true")
 			{
 				$isApi = true;
 			}
-	
+
 			$jsonResponse = json_decode(tellLock($pCommand, $pUser, $pPass, $pToken, $pIp), true);
 			if ($jsonResponse == null || !isset($jsonResponse['message']) || !isset($jsonResponse['code'])) {
 				$showFailure = true;

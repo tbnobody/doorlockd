@@ -5,51 +5,26 @@
 #include "logic.h"
 #include "util.h"
 
-Logic::Logic(const std::chrono::seconds tokenTimeout,
-             const std::string &ldapUri,
+Logic::Logic(const std::string &ldapUri,
              const std::string &bindDN,
              const std::string &webPrefix,
-             const unsigned int tokenLength,
              const std::string &serDev,
              const unsigned int baudrate,
-             const std::string &logfile_scripts,
-             std::condition_variable &onClientUpdate) :
+             const std::string &logfile_scripts) :
     _logger(Logger::get()),
     _door(serDev, baudrate, logfile_scripts),
-    _tokenTimeout(tokenTimeout),
-    _onClientUpdate(onClientUpdate),
     _ldapUri(ldapUri),
     _bindDN(bindDN),
-    _webPrefix(webPrefix),
-    _tokenLength(tokenLength)
+    _webPrefix(webPrefix)
 {
-    srand(time(NULL));
-    _createNewToken(false);
-
     _door.setDoorCallback(std::bind(&Logic::_doorCallback,
                                     this,
                                     std::placeholders::_1));
-
-    _tokenUpdater = std::thread([this] () {
-        while (_run)
-        {
-            std::unique_lock<std::mutex> l(_mutex);
-            _tokenCondition.wait_for(l, _tokenTimeout);
-            if (_run == false)
-            {
-                break;
-            } else {
-                _createNewToken(true);
-            }
-        }
-    });
 }
 
 Logic::~Logic()
 {
     _run = false;
-    _tokenCondition.notify_one();
-    _tokenUpdater.join();
 }
 
 Response Logic::processDoor(const DoorCommand &doorCommand)
@@ -92,12 +67,6 @@ Response Logic::request(const Request &request)
             goto out;
     }
 
-    response = _checkToken(request.token);
-    if (!response) {
-        goto out;
-    }
-    _logger(LogLevel::info, "   -> Token check successful");
-
     response = _checkLDAP(request.user, request.password);
     if (!response) {
         goto out;
@@ -119,8 +88,6 @@ Response Logic::_lock()
         response.code = Response::Code::AlreadyLocked;
         response.message = "Unable to lock: already closed";
     } else {
-        _createNewToken(false);
-
         response.code = Response::Code::Success;
         response.message = "Success";
     }
@@ -136,7 +103,6 @@ Response Logic::_unlock()
 
     const auto oldState = _door.state();
     _door.unlock();
-    _createNewToken(false);
 
     if (oldState == Door::State::Unlocked)
     {
@@ -149,27 +115,6 @@ Response Logic::_unlock()
     }
 
     return response;
-}
-
-Response Logic::_checkToken(std::string token) const
-{
-    std::transform(token.begin(),
-                   token.end(),
-                   token.begin(),
-                   ::toupper);
-
-    if (token == _curToken)
-        return Response(Response::Code::Success);
-
-    if (_prevValid == true && token == _prevToken)
-        return Response(Response::Code::Success);
-
-    _logger("Check Token failed: got \"" + token
-            + "\", expected \"" + _curToken +"\"",
-            LogLevel::error);
-
-    return Response(Response::InvalidToken,
-                    "User provided invalid token");
 }
 
 Response Logic::_checkLDAP(const std::string &user,
@@ -224,28 +169,10 @@ out2:
     return retval;
 }
 
-void Logic::_createNewToken(const bool stillValid)
-{
-    // Todo Mutex einführen
-
-    _prevToken = _curToken;
-    _prevValid = stillValid;
-
-    _curToken = randHexString(_tokenLength);
-
-    std::ostringstream message;
-    message << "New token: " << _curToken
-            << " old token: " << _prevToken << " is "
-            << (_prevValid?"still":"not") << " valid";
-    _logger(message, LogLevel::notice);
-
-    _onClientUpdate.notify_all();
-}
-
 Clientmessage Logic::getClientMessage()
 {
     std::lock_guard<std::mutex> l(_mutex);
-    Clientmessage retval(_webPrefix + _curToken,
+    Clientmessage retval(_webPrefix,
                          _door.state() == Door::State::Unlocked,
                          _doormessage);
 
@@ -259,5 +186,4 @@ void Logic::_doorCallback(Doormessage doormessage)
 {
     std::lock_guard<std::mutex> l(_mutex);
     _doormessage = doormessage;
-    _onClientUpdate.notify_all();
 }

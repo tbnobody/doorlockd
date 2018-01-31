@@ -31,7 +31,6 @@ static std::unique_ptr<Logic> logic = nullptr;
 static ba::io_service io_service;
 
 static std::mutex mutex;
-static std::condition_variable onClientMessage;
 static volatile bool run = true;
 
 static void signal_handler(int signum)
@@ -40,7 +39,6 @@ static void signal_handler(int signum)
       LogLevel::warning);
     io_service.stop();
     run = false;
-    onClientMessage.notify_all();
 }
 
 static Response subscribe(tcp::socket &sock)
@@ -48,7 +46,6 @@ static Response subscribe(tcp::socket &sock)
     sock.write_some(ba::buffer(logic->getClientMessage().toJson()));
     while (run) {
         std::unique_lock<std::mutex> lock(mutex);
-        onClientMessage.wait(lock);
         if (run) {
             sock.write_some(ba::buffer(logic->getClientMessage().toJson()));
         }
@@ -160,26 +157,20 @@ int main(int argc, char** argv)
 {
     int retval = -1;
     short port;
-    std::chrono::seconds tokenTimeout;
     std::string ldapUri;
     std::string bindDN;
     std::string lockPagePrefix;
     fs::path logdir;
     std::string logfile;
     std::string logfile_scripts;
-    unsigned int tokenLength;
     std::string serDev;
     unsigned int baudrate;
 
     try {
-        unsigned int timeout;
         po::options_description desc("doorlockd (" + version + " built on " + gitversion + ")");
         desc.add_options()
             ("help,h",
                 "print help")
-            ("tokentimeout,t",
-                po::value<unsigned int>(&timeout)->default_value(DEFAULT_TOKEN_TIMEOUT),
-                "Token timeout in seconds")
             ("port,p",
                 po::value<short>(&port)->default_value(DEFAULT_PORT),
                 "Port")
@@ -192,9 +183,6 @@ int main(int argc, char** argv)
             ("web,w",
                 po::value<std::string>(&lockPagePrefix)->default_value(DEFAULT_WEB_PREFIX),
                 "Prefix of the webpage")
-            ("tokenLength,t",
-                po::value<unsigned int>(&tokenLength)->default_value(DEFAULT_TOKEN_LENGTH),
-                "Token length")
             ("logdir,l",
                 po::value<fs::path>(&logdir)->default_value(DEFAULT_LOG_DIR),
                 "Log file")
@@ -216,8 +204,6 @@ int main(int argc, char** argv)
         }
 
         po::notify(vm);
-
-        tokenTimeout = std::chrono::seconds(timeout);
 
         logfile = (logdir / LOG_FILENAME).string();
         logfile_scripts = (logdir / LOG_SCRIPTS_FILENAME).string();
@@ -245,15 +231,12 @@ int main(int argc, char** argv)
 
     retval = 0;
     try {
-        logic = std::unique_ptr<Logic>(new Logic(tokenTimeout,
-                                                 ldapUri,
+	logic = std::unique_ptr<Logic>(new Logic(ldapUri,
                                                  bindDN,
                                                  lockPagePrefix,
-                                                 tokenLength,
                                                  serDev,
                                                  baudrate,
-                                                 logfile_scripts,
-                                                 onClientMessage));
+                                                 logfile_scripts));
         server(port);
     }
     catch (const boost::system::system_error &ex) {

@@ -23,15 +23,12 @@ class Logic
 {
 public:
 
-    Logic(const std::chrono::seconds tokenTimeout,
-          const std::string &ldapUri,
+    Logic(const std::string &ldapUri,
           const std::string &bindDN,
           const std::string &webPrefix,
-          const unsigned int tokenLength,
           const std::string &serDev,
           const unsigned int baudrate,
-          const std::string &logfile_scripts,
-          std::condition_variable &onClientUpdate);
+          const std::string &logfile_scripts);
     ~Logic();
 
     // Parse incoming JSON Requests
@@ -51,16 +48,9 @@ private:
     // Internal unlock wrapper
     Response _unlock();
 
-    // Checks if the incoming token is valid
-    Response _checkToken(std::string token) const;
-
     // Checks if incoming credentials against LDAP
     Response _checkLDAP(const std::string &user,
                         const std::string &password);
-
-    // Creates a new random token and draws it on the epaper.
-    // stillValid indicates whether the old (previous) token is still valid
-    void _createNewToken(const bool stillValid);
 
     void _doorCallback(Doormessage doormessage);
 
@@ -69,19 +59,6 @@ private:
     // The door
     Door _door;
 
-    // The current token
-    std::string _curToken = {};
-    // The previous token
-    std::string _prevToken = {};
-    // Indicates whether the previous token is valid
-    bool _prevValid = { false };
-
-    // Tokens are refreshed all tokenTimout seconds
-    const std::chrono::seconds _tokenTimeout;
-    // Thread for asynchronosly updating tokens
-    std::thread _tokenUpdater = {};
-    // Thread can be force-triggered for updates using the condition variable
-    std::condition_variable _tokenCondition = {};
     // stop indicator for the thread
     bool _run = true;
     // General mutex for concurrent data access
@@ -89,17 +66,12 @@ private:
 
     Doormessage _doormessage = {};
 
-    // This variable gets notified on token updates
-    std::condition_variable &_onClientUpdate;
-
     // The URI of the ldap server
     const std::string _ldapUri;
     // LDAP bindDN
     const std::string _bindDN;
     // Prefix of the website
     const std::string _webPrefix;
-    // Length of the token in bytes
-    const unsigned int _tokenLength;
 };
 
 #endif
