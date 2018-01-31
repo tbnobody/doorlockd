@@ -1,11 +1,10 @@
 <?php
-	function tellLock($pCommand, $pUser, $pPass, $pToken, $pIp){
+	function tellLock($pCommand, $pUser, $pPass, $pIp){
 
 		$json = '{
 			"user":' . json_encode( $pUser ) . ',
 			"password":' . json_encode( $pPass ) . ',
 			"command":' . json_encode( $pCommand ) . ',
-			"token":' . json_encode( $pToken ) . ',
 			"ip":' . json_encode( $pIp ) . '
 		}'."\n";
 
@@ -34,7 +33,6 @@
 	$showLoginForm = false;
 	$showSuccess = false;
 	$showFailure = false;
-	$showTokenForm = false;
 	$isApi = false;
 
 	$pIp = $_SERVER[ 'REMOTE_ADDR' ];
@@ -43,13 +41,11 @@
 
 		if (array_key_exists("user", $_POST)
 			&& array_key_exists('pass', $_POST)
-			&& array_key_exists('token', $_POST)
 			&& array_key_exists('command', $_POST)
 			&& array_key_exists('api', $_POST))
 		{
 			$pUser = $_POST[ 'user' ];
 			$pPass = $_POST[ 'pass' ];
-			$pToken = $_POST[ 'token' ];
 			$pCommand = $_POST[ 'command' ];
 			$pApi = $_POST[ 'api' ];
 
@@ -58,7 +54,7 @@
 				$isApi = true;
 			}
 
-			$jsonResponse = json_decode(tellLock($pCommand, $pUser, $pPass, $pToken, $pIp), true);
+			$jsonResponse = json_decode(tellLock($pCommand, $pUser, $pPass, $pIp), true);
 			if ($jsonResponse == null || !isset($jsonResponse['message']) || !isset($jsonResponse['code'])) {
 				$showFailure = true;
 				$failureMsg = 'Error parsing JSON response';
@@ -74,16 +70,7 @@
 		}
 
 	} else {
-		// This is done by apache mod_rewrite
-		$pToken = $_GET['token'];
-		$lToken = $str= ltrim ($pToken, '/');
-
-		if(strlen($lToken) == 0) {
-			$showLoginForm = true;
-			$showTokenForm = true;
-		} else {
-			$showLoginForm = true;
-		}
+		$showLoginForm = true;
 	}
 if ($isApi == false) {
 ?>
@@ -131,13 +118,6 @@ if ($isApi == false) {
 	<?php if ($showLoginForm): ?>
 
 		<form name="login" method="post" action="/">
-			<?php if ($showTokenForm): ?>
-			<label for="token">Token</label>
-			<input type="text" name="token" value="">
-			<?php else: ?>
-			<input type="hidden" name="token" value="<?php echo $lToken;?>">
-			<?php endif; ?>
-
 			<input type="hidden" name="api" value="false">
 
 			<label for="user">User</label>
