@@ -2,37 +2,19 @@
 #include "util.h"
 #include "response.h"
 
-const std::string Clientmessage::_tokenKey = "token";
 const std::string Clientmessage::_unlockButtonKey = "unlockButton";
 const std::string Clientmessage::_lockButtonKey = "lockButton";
 const std::string Clientmessage::_emergencyUnlockKey = "emergencyUnlock";
 const std::string Clientmessage::_isOpenKey = "isOpen";
 
-const std::regex Clientmessage::_token_regex(".*/([0-9a-fA-F]+)");
-
-Clientmessage::Clientmessage(std::string web_address,
-                             bool isOpen,
+Clientmessage::Clientmessage(bool isOpen,
                              Doormessage doormessage) :
-    _web_address(web_address),
-    _token(),
     _isOpen(isOpen),
     _doormessage(doormessage)
 {
-    std::smatch match;
-    if (std::regex_match(_web_address, match, _token_regex)) {
-        if (match.size() == 2) {
-            _token = match[1].str();
-        } else {
-            _token = "ERROR";
-        }
-    } else {
-        _token = "ERROR";
-    }
 }
 
 Clientmessage::Clientmessage() :
-    _web_address(),
-    _token(),
     _isOpen(false),
     _doormessage()
 {
@@ -45,8 +27,6 @@ Clientmessage &Clientmessage::operator=(const Clientmessage &rhs)
         return *this;
     }
 
-    this->_web_address = rhs._web_address;
-    this->_token = rhs._token;
     this->_isOpen = rhs._isOpen;
     this->_doormessage = rhs._doormessage;
 
@@ -58,23 +38,12 @@ std::string Clientmessage::toJson() const
     Json::StyledWriter writer;
     Json::Value message;
 
-    message[_tokenKey] = _web_address;
     message[_unlockButtonKey] = _doormessage.isUnlockButton;
     message[_lockButtonKey] = _doormessage.isLockButton;
     message[_emergencyUnlockKey] = _doormessage.isEmergencyUnlock;
     message[_isOpenKey] = _isOpen;
 
     return writer.write(message);
-}
-
-const std::string& Clientmessage::token() const
-{
-    return _token;
-}
-
-const std::string& Clientmessage::web_address() const
-{
-    return _web_address;
 }
 
 const Doormessage& Clientmessage::doormessage() const
@@ -84,12 +53,10 @@ const Doormessage& Clientmessage::doormessage() const
 
 Clientmessage Clientmessage::fromJson(const Json::Value &root)
 {
-    std::string token;
     bool isOpen;
     Doormessage doormessage;
 
     try {
-        token = getJsonOrFail<std::string>(root, _tokenKey);
         doormessage.isLockButton = getJsonOrFail<bool>(root, _lockButtonKey);
         doormessage.isUnlockButton = getJsonOrFail<bool>(root, _unlockButtonKey);
         doormessage.isEmergencyUnlock = getJsonOrFail<bool>(root, _emergencyUnlockKey);
@@ -99,7 +66,7 @@ Clientmessage Clientmessage::fromJson(const Json::Value &root)
         throw Response(Response::Code::JsonError, ex.what());
     }
 
-    return Clientmessage(token, isOpen, doormessage);
+    return Clientmessage(isOpen, doormessage);
 }
 
 Clientmessage Clientmessage::fromString(const std::string &string)

@@ -58,8 +58,6 @@ void NetworkThread::run() {
                     // Log it!
                     const auto& doormessage = msg.doormessage();
                     _l("Received message", LogLevel::info);
-                    _l((std::string)"  token: " + msg.web_address(),
-                       LogLevel::info);
                     _l((std::string)"  open: " + std::to_string(msg.isOpen()),
                       LogLevel::info);
                     _l((std::string)"  button lock: " + std::to_string(doormessage.isLockButton),

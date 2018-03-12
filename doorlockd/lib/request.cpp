@@ -41,8 +41,6 @@ Request Request::fromJson(const Json::Value &root)
             l("      user: " + retval.user, LogLevel::info);
             retval.password = getJsonOrFail<std::string>(root, "password");
             l("      password: XXX", LogLevel::info);
-            retval.token = getJsonOrFail<std::string>(root, "token");
-            l("      token: " + retval.token, LogLevel::info);
         }
 
         if (retval.command == Command::Subscribe) {

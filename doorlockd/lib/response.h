@@ -15,7 +15,6 @@ public:
         AlreadyLocked, // Authentication successful, but door is already locked
         NotJson, // Request is not a valid JSON object
         JsonError, // Request is valid JSON, but does not contain necessary material
-        InvalidToken, // Request contains invalid token
         InvalidCredentials, // Invalid LDAP credentials
         InvalidIP, // IP check failure
         UnknownCommand, // Unknown action

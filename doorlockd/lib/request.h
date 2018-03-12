@@ -17,7 +17,6 @@ public:
                        command = { Command::Unknown };
     std::string user = { };
     std::string password = { };
-    std::string token = { };
 
 private:
     static Command _commandFromString(const std::string &command);
